@@ -1,0 +1,107 @@
+version: '3.3'
+
+volumes:
+  prometheus_data: {}
+  grafana_data: {}
+
+networks:
+  monitoring:
+    driver: bridge
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.11.1
+    container_name: prometheus
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - $PWD/prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - monitoring
+    links:
+      - alertmanager
+      - cadvisor
+      - node_exporter
+    expose:
+      - '9090'
+    ports:
+      - 9090:9090
+    depends_on:
+      - cadvisor
+
+  alertmanager:
+    image: prom/alertmanager:v0.18.0
+    container_name: alertmanager
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - $PWD/alertmanager/:/etc/alertmanager/
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - monitoring
+    expose:
+      - '9093'
+    ports:
+      - 9093:9093
+
+  cadvisor:
+    image: google/cadvisor:v0.33.0
+    container_name: cadvisor
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - monitoring
+    expose:
+      - '8080'
+
+  node_exporter:
+    image: prom/node-exporter:v0.18.0
+    container_name: node-exporter
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command: 
+      - '--path.procfs=/host/proc' 
+      - '--path.sysfs=/host/sys'
+      - --collector.filesystem.ignored-mount-points
+      - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    networks:
+      - monitoring
+    expose:
+      - '9100'
+
+  grafana:
+    image: grafana/grafana:6.2.5
+    user: "104"
+    container_name: grafana
+    restart: always
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - grafana_data:/var/lib/grafana
+      - $PWD/grafana/provisioning/:/etc/grafana/provisioning/
+    env_file:
+      - $PWD/grafana/config.monitoring
+    networks:
+      - monitoring
+    links:
+      - prometheus
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus

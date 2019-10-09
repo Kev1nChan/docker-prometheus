@@ -1,0 +1,7 @@
+GF_SECURITY_ADMIN_PASSWORD=qwe123!@#
+GF_USERS_ALLOW_SIGN_UP=false
+GF_SMTP_ENABLED=true
+GF_SMTP_HOST=smtp.qq.com:465
+GF_SMTP_USER=your-email@foxmail.com
+GF_SMTP_PASSWORD=your-password
+GF_SMTP_FROM_ADDRESS=your-email@foxmail.com
